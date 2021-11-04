@@ -17,8 +17,8 @@ services:
     ports:
       - 3306:3306
     # docker安全验证
-    security_opt:
-      - seccomp:unconfined
+    # security_opt:
+    #   - seccomp:unconfined
     privileged: true
     environment:
       - MYSQL_DATABASE=superset
