@@ -9,15 +9,32 @@ superset
 
 #### 安装教程
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+1. ##### 启动superset
+
+   ```yaml
+   docker-compose up -d
+   ```
+
 
 #### 使用说明
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+1. #####  新建用户
+
+   ```yaml
+   docker exec -it bi-superset-pro superset fab create-admin --username admin --firstname Superset --lastname Admin --email liaozhimingandy@qq.com --password admin
+   ```
+
+2. ##### 初始化数据库
+
+   ```yaml
+   docker exec -it bi-superset-pro superset db upgrade
+   ```
+
+3. ##### 初始化superset
+
+   ```yaml
+   docker exec -it bi-superset-pro superset init
+   ```
 
 #### 参与贡献
 
