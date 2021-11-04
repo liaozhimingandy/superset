@@ -1,0 +1,54 @@
+version: '3'
+services:
+  redis:
+    image: redis:6.2
+    container_name: bi-redis-pro
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - redis:/data
+
+  mysql:
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-authentication-plugin=mysql_native_password
+    image: mysql:8.0
+    container_name: bi-mysql-pro
+    restart: always
+    ports:
+      - 3306:3306
+    # docker安全验证
+    security_opt:
+      - seccomp:unconfined
+    privileged: true
+    environment:
+      - MYSQL_DATABASE=superset
+      - MYSQL_PASSWORD=superset
+      - MYSQL_ROOT_PASSWORD=superset
+      - MYSQL_USER=superset
+      - TZ=Asia/Shanghai
+    volumes:
+      - mysql:/var/lib/mysql
+
+  superset:
+    image: liaozhiming/superset:1.3.2.211102
+    container_name: bi-superset-pro
+    restart: always
+    depends_on:
+      - mysql
+      - redis
+    environment:
+      - MAPBOX_API_KEY=""
+      - TZ=Asia/Shanghai
+      - SECRET_KEY=\x1fLbg\xb2\xcfP\xef MJ8)\xb9\x04\x01\xf2&a\xbaG\x08<*\x13\xcd\x9bf\xd6\x82\xbf\xff
+      - SQLALCHEMY_DATABASE_URI=mysql://superset:superset@mysql:3306/superset?charset=utf8mb4
+
+    ports:
+      - 8088:8088
+    volumes:
+      - ./superset/config.py:/app/superset/config.py
+
+volumes:
+  mysql:
+    name: data_bi_mysql
+  redis:
+    name: data_bi_redis
