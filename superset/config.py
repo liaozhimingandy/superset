@@ -87,6 +87,16 @@ PACKAGE_JSON_FILE = os.path.join(BASE_DIR, "static", "assets", "package.json")
 # },
 FAVICONS = [{"href": "/static/assets/images/favicon.png"}]
 
+# 添加的配置
+# 缓存默认配置
+CACHE_DEFAULT_TIMEOUT = int(timedelta(days=1).total_seconds())
+CACHE_DEFAULT_CONFIG = { 'CACHE_TYPE': 'redis',
+    'CACHE_DEFAULT_TIMEOUT': 300,
+    'CACHE_KEY_PREFIX': 'superset_',
+    'CACHE_REDIS_HOST': 'redis',
+    'CACHE_REDIS_PORT': 6379,
+    'CACHE_REDIS_DB': 1,
+    'CACHE_REDIS_URL': 'redis://redis:6379/1'}
 
 def _try_json_readversion(filepath: str) -> Optional[str]:
     try:
@@ -489,15 +499,7 @@ EXTRA_SEQUENTIAL_COLOR_SCHEMES: List[Dict[str, Any]] = []
 # Also used by Alerts & Reports
 # ---------------------------------------------------
 THUMBNAIL_SELENIUM_USER = "admin"
-THUMBNAIL_CACHE_CONFIG: CacheConfig = {
-     'CACHE_TYPE': 'redis',
-    'CACHE_DEFAULT_TIMEOUT': 300,
-    'CACHE_KEY_PREFIX': 'superset_',
-    'CACHE_REDIS_HOST': 'redis',
-    'CACHE_REDIS_PORT': 6379,
-    'CACHE_REDIS_DB': 1,
-    'CACHE_REDIS_URL': 'redis://redis:6379/1',
-}
+THUMBNAIL_CACHE_CONFIG: CacheConfig = CACHE_DEFAULT_CONFIG
 
 # Time before selenium times out after trying to locate an element on the page and wait
 # for that element to load for a screenshot.
@@ -529,25 +531,21 @@ IMG_UPLOAD_URL = "/static/uploads/"
 
 # Default cache timeout, applies to all cache backends unless specifically overridden in
 # each cache config.
-CACHE_DEFAULT_TIMEOUT = int(timedelta(days=1).total_seconds())
+# CACHE_DEFAULT_TIMEOUT = int(timedelta(days=1).total_seconds())
+
+# CACHE_DEFAULT_CONFIG = { 'CACHE_TYPE': 'redis',
+#     'CACHE_DEFAULT_TIMEOUT': 300,
+#     'CACHE_KEY_PREFIX': 'superset_',
+#     'CACHE_REDIS_HOST': 'redis',
+#     'CACHE_REDIS_PORT': 6379,
+#     'CACHE_REDIS_DB': 1,
+#     'CACHE_REDIS_URL': 'redis://redis:6379/1'}
 
 # Default cache for Superset objects
-CACHE_CONFIG: CacheConfig = { 'CACHE_TYPE': 'redis',
-    'CACHE_DEFAULT_TIMEOUT': 300,
-    'CACHE_KEY_PREFIX': 'superset_',
-    'CACHE_REDIS_HOST': 'redis',
-    'CACHE_REDIS_PORT': 6379,
-    'CACHE_REDIS_DB': 1,
-    'CACHE_REDIS_URL': 'redis://redis:6379/1'}
+CACHE_CONFIG: CacheConfig = CACHE_DEFAULT_CONFIG
 
 # Cache for datasource metadata and query results
-DATA_CACHE_CONFIG: CacheConfig = { 'CACHE_TYPE': 'redis',
-    'CACHE_DEFAULT_TIMEOUT': 300,
-    'CACHE_KEY_PREFIX': 'superset_',
-    'CACHE_REDIS_HOST': 'redis',
-    'CACHE_REDIS_PORT': 6379,
-    'CACHE_REDIS_DB': 1,
-    'CACHE_REDIS_URL': 'redis://redis:6379/1'}
+DATA_CACHE_CONFIG: CacheConfig = CACHE_DEFAULT_CONFIG
 
 # store cache keys by datasource UID (via CacheKey) for custom processing/invalidation
 STORE_CACHE_KEYS_IN_METADATA_DB = False
