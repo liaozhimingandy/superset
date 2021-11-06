@@ -11,3 +11,6 @@ RUN pip install -i http://mirrors.aliyun.com/pypi/simple/  cx_Oracle && pip inst
 # RUN pip install sqlalchemy-redshift
 # Switching back to using the `superset` user
 USER superset
+
+# 构建
+# docker build --squash -t liaozhiming/superset:1.3.2.211106 . 
