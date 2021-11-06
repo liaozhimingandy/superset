@@ -3,7 +3,7 @@ FROM apache/superset:1.3.2-dev
 USER root
 # Example: installing the MySQL driver to connect to the metadata database
 # if you prefer Postgres, you may want to use `psycopg2-binary` instead
-RUN pip install -i http://mirrors.aliyun.com/pypi/simple/  cx_Oracle && pip install -i http://mirrors.aliyun.com/pypi/simple/ pymssql
+RUN pip install -i http://mirrors.aliyun.com/pypi/simple/  cx_Oracle --trusted-host mirrors.aliyun.com && pip install -i http://mirrors.aliyun.com/pypi/simple/ pymssql --trusted-host mirrors.aliyun.com
 # Example: installing a driver to connect to Redshift
 # Find which driver you need based on the analytics database
 # you want to connect to here:
