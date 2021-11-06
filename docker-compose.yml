@@ -30,7 +30,7 @@ services:
       - mysql:/var/lib/mysql
 
   superset:
-    image: apache/superset:1.3.2-dev
+    image: liaozhiming/superset:1.3.2.211106
     container_name: bi-superset-pro
     restart: always
     depends_on:
