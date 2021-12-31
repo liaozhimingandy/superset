@@ -1,19 +1,39 @@
+# 设置变量
+# redis
+x-redis-image: &redis-image redis:6.2
+x-redis-version: &redis-version 6.2
+x-redis-volumes: &redis-volumes
+  - redis:/data 
+
+# mysql
+x-mysql-image: &mysql-image mysql:8.0
+x-mysql-version: &mysql-version 8.0
+x-mysql-volumes: &mysql-volumes
+  - mysql:/var/lib/mysql
+
+# kylin
+x-kylin-image: &kylin-image apachekylin/apache-kylin-standalone:4.0.0
+x-kylin-version: &kylin-version 4.0.0
+
+# superset
+x-superset-image: &superset-image liaozhiming/superset:1.3.2.211102
+x-superset-version: &superset-version 1.3.2.211102
+
 version: '3'
 services:
   redis:
-    image: redis:6.2
+    image: *redis-image
     container_name: bi-redis-pro
-    restart: always
+    restart: unless-stopped
     environment:
       - TZ=Asia/Shanghai
-    volumes:
-      - redis:/data
+    volumes: *redis-volumes
 
   mysql:
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-authentication-plugin=mysql_native_password
-    image: mysql:8.0
+    image: *mysql-image
     container_name: bi-mysql-pro
-    restart: always
+    restart: unless-stopped
     ports:
       - 3306:3306
     # docker安全验证
@@ -26,15 +46,14 @@ services:
       - MYSQL_ROOT_PASSWORD=superset
       - MYSQL_USER=superset
       - TZ=Asia/Shanghai
-    volumes:
-      - mysql:/var/lib/mysql
+    volumes: *mysql-volumes
 
   # cube; 能在亚秒内查询巨大的表;http://localhost:7070/kylin/login
   # 服务器配置至少16G
   kylin:
-    image: apachekylin/apache-kylin-standalone:4.0.0
+    image: *kylin-image
     container_name: bi-kylin-pro
-    restart: always
+    restart: unless-stopped
     ports:
       - 7070:7070
       - 8088:8088
@@ -53,9 +72,9 @@ services:
             memory: 200M
 
   superset:
-    image: liaozhiming/superset:1.3.2.211102
+    image: *superset-image
     container_name: bi-superset-pro
-    restart: always
+    restart: unless-stopped
     links:
       - "kylin:kylin"
     depends_on:
