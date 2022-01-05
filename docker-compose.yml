@@ -25,6 +25,8 @@ services:
     image: *redis-image
     container_name: bi-redis-pro
     restart: unless-stopped
+    networks:
+      - bi
     environment:
       - TZ=Asia/Shanghai
     volumes: *redis-volumes
@@ -36,6 +38,8 @@ services:
     restart: unless-stopped
     ports:
       - 3306:3306
+    networks:
+      - bi
     # docker安全验证
     # security_opt:
     #   - seccomp:unconfined
@@ -48,35 +52,39 @@ services:
       - TZ=Asia/Shanghai
     volumes: *mysql-volumes
 
+  # 根据需要启动
   # cube; 能在亚秒内查询巨大的表;http://localhost:7070/kylin/login
   # 服务器配置至少16G
-  kylin:
-    image: *kylin-image
-    container_name: bi-kylin-pro
-    restart: unless-stopped
-    ports:
-      - 7070:7070
-      - 8088:8088
-      - 50170:50070
-      - 8032:8032
-      - 8042:8042
-      - 2181:2181
-    environment:
-      - TZ=Asia/Shanghai
-    deploy:
-      resources:
-         limits:
-            # cpus: "2.00"
-            memory: 8G
-         reservations:
-            memory: 200M
+  # kylin:
+  #   image: *kylin-image
+  #   container_name: bi-kylin-pro
+  #   restart: unless-stopped
+  #   ports:
+  #     - 7070:7070
+  #     - 8088:8088
+  #     - 50170:50070
+  #     - 8032:8032
+  #     - 8042:8042
+  #     - 2181:2181
+  #   networks:
+  #     - bi
+  #   environment:
+  #     - TZ=Asia/Shanghai
+  #   deploy:
+  #     resources:
+  #        limits:
+  #           # cpus: "2.00"
+  #           memory: 8G
+  #        reservations:
+  #           memory: 200M
 
   superset:
     image: *superset-image
     container_name: bi-superset-pro
     restart: unless-stopped
     links:
-      - "kylin:kylin"
+      # - kylin:kylin
+      - redis:redis
     depends_on:
       - mysql
       - redis
@@ -85,11 +93,16 @@ services:
       - TZ=Asia/Shanghai
       - SECRET_KEY=\x1fLbg\xb2\xcfP\xef MJ8)\xb9\x04\x01\xf2&a\xbaG\x08<*\x13\xcd\x9bf\xd6\x82\xbf\xff
       - SQLALCHEMY_DATABASE_URI=mysql://superset:superset@mysql:3306/superset?charset=utf8mb4
-
     ports:
       - 80:8088
+    networks:
+      - bi
     volumes:
       - ./superset/config.py:/app/superset/config.py
+
+networks:
+  bi:
+    driver: bridge
 
 volumes:
   mysql:
