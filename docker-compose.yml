@@ -13,7 +13,7 @@ x-mysql-volumes: &mysql-volumes
 x-kylin-image: &kylin-image apachekylin/apache-kylin-standalone:4.0.0
 
 # superset
-x-superset-image: &superset-image liaozhiming/superset:1.5.1.202208
+x-superset-image: &superset-image apache/superset:2.0.0
 
 version: '3'
 services:
@@ -76,7 +76,7 @@ services:
 
   superset:
     image: *superset-image
-    command: gunicorn --workers 10 -k gevent --worker-connections 1000 --limit-request-line 0 --limit-request-field_size 0 --timeout 120 --bind 0.0.0.0:8088 "superset.app:create_app()"
+    # command: gunicorn --workers 10 -k gevent --worker-connections 1000 --limit-request-line 0 --limit-request-field_size 0 --timeout 120 --bind 0.0.0.0:8088 "superset.app:create_app()"
     container_name: bi-superset-pro
     restart: unless-stopped
     links:
@@ -95,7 +95,7 @@ services:
     networks:
       - bi
     volumes:
-      - /c/Users/liaoz/Documents/superset/superset/config.py:/app/superset/config.py
+      - ./superset/config.py:/app/superset/config.py
 
 networks:
   bi:

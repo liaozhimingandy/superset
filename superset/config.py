@@ -29,8 +29,18 @@ import os
 import re
 import sys
 from collections import OrderedDict
-from datetime import date, timedelta
-from typing import Any, Callable, Dict, List, Optional, Type, TYPE_CHECKING, Union
+from datetime import timedelta
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Type,
+    TYPE_CHECKING,
+    Union,
+)
 
 import pkg_resources
 from cachelib.base import BaseCache
@@ -39,9 +49,10 @@ from dateutil import tz
 from flask import Blueprint
 from flask_appbuilder.security.manager import AUTH_DB
 from pandas._libs.parsers import STR_NA_VALUES  # pylint: disable=no-name-in-module
-from typing_extensions import Literal
-from werkzeug.local import LocalProxy
 
+from superset.advanced_data_type.plugins.internet_address import internet_address
+from superset.advanced_data_type.plugins.internet_port import internet_port
+from superset.advanced_data_type.types import AdvancedDataType
 from superset.constants import CHANGE_ME_SECRET_KEY
 from superset.jinja_context import BaseTemplateProcessor
 from superset.stats_logger import DummyStatsLogger
@@ -140,8 +151,6 @@ ROW_LIMIT = 50000
 SAMPLES_ROW_LIMIT = 1000
 # max rows retrieved by filter select auto complete
 FILTER_SELECT_ROW_LIMIT = 10000
-SUPERSET_WORKERS = 2  # deprecated
-SUPERSET_CELERY_WORKERS = 32  # deprecated
 
 SUPERSET_WEBSERVER_PROTOCOL = "http"
 SUPERSET_WEBSERVER_ADDRESS = "0.0.0.0"
@@ -164,6 +173,7 @@ SUPERSET_DASHBOARD_PERIODICAL_REFRESH_WARNING_MESSAGE = None
 SUPERSET_DASHBOARD_POSITION_DATA_LIMIT = 65535
 CUSTOM_SECURITY_MANAGER = None
 SQLALCHEMY_TRACK_MODIFICATIONS = False
+
 # ---------------------------------------------------------
 
 # Your App secret key. Make sure you override it on superset_config.py.
@@ -181,7 +191,7 @@ if "SQLALCHEMY_DATABASE_URI" in os.environ:
     SQLALCHEMY_DATABASE_URI = os.environ["SQLALCHEMY_DATABASE_URI"]
 else:
     DATA_DIR = "sqlite:///" + os.path.join(DATA_DIR, "superset.db")
-# SQLALCHEMY_DATABASE_URI = 'mysql://superset:superset@mysql/superset'
+# SQLALCHEMY_DATABASE_URI = 'mysql://myapp@localhost/myapp'
 # SQLALCHEMY_DATABASE_URI = 'postgresql://root:password@localhost/myapp'
 
 # In order to hook up a custom password store for all SQLACHEMY connections
@@ -244,7 +254,6 @@ APP_NAME = "Superset"
 
 # Specify the App icon
 APP_ICON = "/static/assets/images/superset-logo-horiz.png"
-APP_ICON_WIDTH = 126
 
 # Specify where clicking the logo would take the user
 # e.g. setting it to '/' would take the user to '/superset/welcome/'
@@ -270,16 +279,6 @@ FAB_API_SWAGGER_UI = True
 DRUID_TZ = tz.tzutc()
 DRUID_ANALYSIS_TYPES = ["cardinality"]
 
-# Legacy Druid NoSQL (native) connector
-# Druid supports a SQL interface in its newer versions.
-# Setting this flag to True enables the deprecated, API-based Druid
-# connector. This feature may be removed at a future date.
-DRUID_IS_ACTIVE = False
-
-# If Druid is active whether to include the links to scan/refresh Druid datasources.
-# This should be disabled if you are trying to wean yourself off of the Druid NoSQL
-# connector.
-DRUID_METADATA_LINKS_ENABLED = True
 
 # ----------------------------------------------------
 # AUTHENTICATION CONFIG
@@ -311,8 +310,6 @@ AUTH_TYPE = AUTH_DB
 #    { 'name': 'Yahoo', 'url': 'https://open.login.yahoo.com/' },
 #    { 'name': 'Flickr', 'url': 'https://www.flickr.com/<username>' },
 
-AUTH_STRICT_RESPONSE_CODES = True
-
 # ---------------------------------------------------
 # Roles config
 # ---------------------------------------------------
@@ -325,7 +322,7 @@ PUBLIC_ROLE_LIKE: Optional[str] = None
 # Babel config for translations
 # ---------------------------------------------------
 # Setup default language
-BABEL_DEFAULT_LOCALE = "en"
+BABEL_DEFAULT_LOCALE = "zh"
 # Your application default translation path
 BABEL_DEFAULT_FOLDER = "superset/translations"
 # The allowed translation for you app
@@ -347,10 +344,7 @@ LANGUAGES = {
 }
 # Turning off i18n by default as translation in most languages are
 # incomplete and not well maintained.
-LANGUAGES = {
-    "zh": {"flag": "cn", "name": "Chinese"},
-    "en": {"flag": "us", "name": "English"}
-}
+LANGUAGES = {}
 
 # ---------------------------------------------------
 # Feature flags
@@ -374,7 +368,7 @@ DEFAULT_FEATURE_FLAGS: Dict[str, bool] = {
     # With Superset 2.0, we are updating the default so that the legacy datasource
     # editor no longer shows. Currently this is set to false so that the editor
     # option does show, but we will be depreciating it.
-    "DISABLE_LEGACY_DATASOURCE_EDITOR": False,
+    "DISABLE_LEGACY_DATASOURCE_EDITOR": True,
     # For some security concerns, you may need to enforce CSRF protection on
     # all query request to explore_json endpoint. In Superset, we use
     # `flask-csrf <https://sjl.bitbucket.io/flask-csrf/>`_ add csrf protection
@@ -385,6 +379,11 @@ DEFAULT_FEATURE_FLAGS: Dict[str, bool] = {
     "ENABLE_EXPLORE_JSON_CSRF_PROTECTION": False,
     "ENABLE_TEMPLATE_PROCESSING": False,
     "ENABLE_TEMPLATE_REMOVE_FILTERS": False,
+    # Allow for javascript controls components
+    # this enables programmers to customize certain charts (like the
+    # geospatial ones) by inputing javascript in controls. This exposes
+    # an XSS security vulnerability
+    "ENABLE_JAVASCRIPT_CONTROLS": False,
     "KV_STORE": False,
     # When this feature is enabled, nested types in Presto will be
     # expanded into extra columns and/or arrays. This is experimental,
@@ -396,13 +395,8 @@ DEFAULT_FEATURE_FLAGS: Dict[str, bool] = {
     "REMOVE_SLICE_LEVEL_LABEL_COLORS": False,
     "SHARE_QUERIES_VIA_KV_STORE": False,
     "TAGGING_SYSTEM": False,
-    "SQLLAB_BACKEND_PERSISTENCE": False,
+    "SQLLAB_BACKEND_PERSISTENCE": True,
     "LISTVIEWS_DEFAULT_CARD_VIEW": False,
-    # Enables the replacement React views for all the FAB views (list, edit, show) with
-    # designs introduced in https://github.com/apache/superset/issues/8976
-    # (SIP-34). This is a work in progress so not all features available in FAB have
-    # been implemented.
-    "ENABLE_REACT_CRUD_VIEWS": True,
     # When True, this flag allows display of HTML tags in Markdown components
     "DISPLAY_MARKDOWN_HTML": True,
     # When True, this escapes HTML (rather than rendering it) in Markdown components
@@ -413,24 +407,15 @@ DEFAULT_FEATURE_FLAGS: Dict[str, bool] = {
     "DASHBOARD_NATIVE_FILTERS_SET": False,
     "DASHBOARD_FILTERS_EXPERIMENTAL": False,
     "GLOBAL_ASYNC_QUERIES": False,
-    "VERSIONED_EXPORT": False,
-    # Note that: RowLevelSecurityFilter is only given by default to the Admin role
-    # and the Admin Role does have the all_datasources security permission.
-    # But, if users create a specific role with access to RowLevelSecurityFilter MVC
-    # and a custom datasource access, the table dropdown will not be correctly filtered
-    # by that custom datasource access. So we are assuming a default security config,
-    # a custom security config could potentially give access to setting filters on
-    # tables that users do not have access to.
-    "ROW_LEVEL_SECURITY": True,
+    "VERSIONED_EXPORT": True,
     "EMBEDDED_SUPERSET": False,
     # Enables Alerts and reports new implementation
     "ALERT_REPORTS": False,
-    # Enable experimental feature to search for other dashboards
-    "OMNIBAR": False,
     "DASHBOARD_RBAC": False,
-    "ENABLE_EXPLORE_DRAG_AND_DROP": False,
+    "ENABLE_EXPLORE_DRAG_AND_DROP": True,
     "ENABLE_FILTER_BOX_MIGRATION": False,
-    "ENABLE_DND_WITH_CLICK_UX": False,
+    "ENABLE_ADVANCED_DATA_TYPES": False,
+    "ENABLE_DND_WITH_CLICK_UX": True,
     # Enabling ALERTS_ATTACH_REPORTS, the system sends email and slack message
     # with screenshot and link
     # Disables ALERTS_ATTACH_REPORTS, the system DOES NOT generate screenshot
@@ -449,6 +434,13 @@ DEFAULT_FEATURE_FLAGS: Dict[str, bool] = {
     "UX_BETA": False,
     "GENERIC_CHART_AXES": False,
     "ALLOW_ADHOC_SUBQUERY": False,
+    "USE_ANALAGOUS_COLORS": True,
+    # Apply RLS rules to SQL Lab queries. This requires parsing and manipulating the
+    # query, and might break queries and/or allow users to bypass RLS. Use with care!
+    "RLS_IN_SQLLAB": False,
+    # Enable caching per impersonation key (e.g username) in a datasource where user
+    # impersonation is enabled
+    "CACHE_IMPERSONATION": False,
 }
 
 # Feature flags may also be set via 'SUPERSET_FEATURE_' prefixed environment vars.
@@ -594,21 +586,30 @@ IMG_UPLOAD_URL = "/static/uploads/"
 CACHE_DEFAULT_TIMEOUT = int(timedelta(days=1).total_seconds())
 
 # Default cache for Superset objects
-CACHE_CONFIG: CacheConfig = {"CACHE_TYPE": "NullCache"}
+CACHE_CONFIG: CacheConfig = {
+    'CACHE_TYPE': 'redis',
+    'CACHE_DEFAULT_TIMEOUT': 60 * 10 * 1, # 一天的缓存 即 60秒 * 60 * 24小时
+    'CACHE_KEY_PREFIX': 'superset_',
+    'CACHE_REDIS_URL': 'redis://redis:6379/0', #redis的地址
+}
 
 # Cache for datasource metadata and query results
-DATA_CACHE_CONFIG: CacheConfig = {"CACHE_TYPE": "NullCache"}
+DATA_CACHE_CONFIG: CacheConfig = {
+    'CACHE_TYPE': 'redis',
+    'CACHE_DEFAULT_TIMEOUT': 60 * 60 * 1, # 一天的缓存 即 60秒 * 60 * 24小时
+    'CACHE_KEY_PREFIX': 'superset_results',
+    'CACHE_REDIS_URL': 'redis://redis:6379/1', #redis的地址
+
+}
 
 # Cache for dashboard filter state (`CACHE_TYPE` defaults to `SimpleCache` when
 #  running in debug mode unless overridden)
 FILTER_STATE_CACHE_CONFIG: CacheConfig = {
-    "CACHE_TYPE": "RedisCache",
-    'CACHE_KEY_PREFIX': 'superset_filter_',
-    'CACHE_REDIS_HOST': 'redis',
-    'CACHE_REDIS_PORT': 6379,
-    'CACHE_REDIS_DB': 1,
-    'CACHE_REDIS_URL': 'redis://redis:6379/1',
-    "CACHE_DEFAULT_TIMEOUT": int(timedelta(days=7).total_seconds()),
+    'CACHE_TYPE': 'redis',
+    'CACHE_DEFAULT_TIMEOUT': 60 * 60 * 1, # 一天的缓存 即 60秒 * 60 * 24小时
+    'CACHE_KEY_PREFIX': 'superset_filter',
+     'CACHE_REDIS_URL': 'redis://redis:6379/3', #redis的地址
+    "CACHE_DEFAULT_TIMEOUT": int(timedelta(days=90).total_seconds()),
     # should the timeout be reset when retrieving a cached value
     "REFRESH_TIMEOUT_ON_RETRIEVAL": True,
 }
@@ -616,19 +617,13 @@ FILTER_STATE_CACHE_CONFIG: CacheConfig = {
 # Cache for explore form data state (`CACHE_TYPE` defaults to `SimpleCache` when
 #  running in debug mode unless overridden)
 EXPLORE_FORM_DATA_CACHE_CONFIG: CacheConfig = {
-    "CACHE_TYPE": "RedisCache",
-    'CACHE_KEY_PREFIX': 'superset_explore_',
-    'CACHE_REDIS_HOST': 'redis',
-    'CACHE_REDIS_PORT': 6379,
-    'CACHE_REDIS_DB': 1,
-    'CACHE_REDIS_URL': 'redis://redis:6379/1',
     "CACHE_DEFAULT_TIMEOUT": int(timedelta(days=7).total_seconds()),
     # should the timeout be reset when retrieving a cached value
     "REFRESH_TIMEOUT_ON_RETRIEVAL": True,
 }
 
 # store cache keys by datasource UID (via CacheKey) for custom processing/invalidation
-STORE_CACHE_KEYS_IN_METADATA_DB = False
+STORE_CACHE_KEYS_IN_METADATA_DB = True
 
 # CORS Options
 ENABLE_CORS = False
@@ -685,19 +680,12 @@ TIME_GRAIN_ADDON_EXPRESSIONS: Dict[str, Dict[str, str]] = {}
 
 VIZ_TYPE_DENYLIST: List[str] = []
 
-# ---------------------------------------------------
-# List of data sources not to be refreshed in druid cluster
-# ---------------------------------------------------
-
-DRUID_DATA_SOURCE_DENYLIST: List[str] = []
-
 # --------------------------------------------------
 # Modules, datasources and middleware to be registered
 # --------------------------------------------------
 DEFAULT_MODULE_DS_MAP = OrderedDict(
     [
         ("superset.connectors.sqla.models", ["SqlaTable"]),
-        ("superset.connectors.druid.models", ["DruidDatasource"]),
     ]
 )
 ADDITIONAL_MODULE_DS_MAP: Dict[str, List[str]] = {}
@@ -733,7 +721,7 @@ BACKUP_COUNT = 30
 #     database,
 #     query,
 #     schema=None,
-#     user=None,
+#     user=None,  # TODO(john-bodley): Deprecate in 3.0.
 #     client=None,
 #     security_manager=None,
 #     log_params=None,
@@ -773,13 +761,13 @@ DASHBOARD_AUTO_REFRESH_MODE: Literal["fetch", "force"] = "force"
 
 
 class CeleryConfig:  # pylint: disable=too-few-public-methods
-    BROKER_URL = "sqla+sqlite:///celerydb.sqlite"
-    CELERY_IMPORTS = ("superset.sql_lab", "superset.tasks")
-    CELERY_RESULT_BACKEND = "db+sqlite:///celery_results.sqlite"
-    CELERYD_LOG_LEVEL = "DEBUG"
-    CELERYD_PREFETCH_MULTIPLIER = 1
-    CELERY_ACKS_LATE = False
-    CELERY_ANNOTATIONS = {
+    broker_url = "redis://redis:6379/4"
+    imports = ("superset.sql_lab",)
+    result_backend = "redis://redis:6379/4"
+    worker_log_level = "DEBUG"
+    worker_prefetch_multiplier = 1
+    task_acks_late = False
+    task_annotations = {
         "sql_lab.get_sql_results": {"rate_limit": "100/s"},
         "email_reports.send": {
             "rate_limit": "1/s",
@@ -788,7 +776,7 @@ class CeleryConfig:  # pylint: disable=too-few-public-methods
             "ignore_result": True,
         },
     }
-    CELERYBEAT_SCHEDULE = {
+    beat_schedule = {
         "email_reports.schedule_hourly": {
             "task": "email_reports.schedule_hourly",
             "schedule": crontab(minute=1, hour="*"),
@@ -1023,7 +1011,10 @@ BLUEPRINTS: List[Blueprint] = []
 # Provide a callable that receives a tracking_url and returns another
 # URL. This is used to translate internal Hadoop job tracker URL
 # into a proxied one
+
+
 TRACKING_URL_TRANSFORMER = lambda x: x
+
 
 # Interval between consecutive polls when using Hive Engine
 HIVE_POLL_INTERVAL = int(timedelta(seconds=5).total_seconds())
@@ -1044,12 +1035,6 @@ PRESTO_POLL_INTERVAL = int(timedelta(seconds=1).total_seconds())
 #     },
 # }
 ALLOWED_EXTRA_AUTHENTICATIONS: Dict[str, Dict[str, Callable[..., Any]]] = {}
-
-# Allow for javascript controls components
-# this enables programmers to customize certain charts (like the
-# geospatial ones) by inputing javascript in controls. This exposes
-# an XSS security vulnerability
-ENABLE_JAVASCRIPT_CONTROLS = False
 
 # The id of a template dashboard that should be copied to every new user
 DASHBOARD_TEMPLATE_ID = None
@@ -1076,29 +1061,27 @@ DB_CONNECTION_MUTATOR = None
 # The use case is can be around adding some sort of comment header
 # with information such as the username and worker node information
 #
-#    def SQL_QUERY_MUTATOR(sql, user_name, security_manager, database):
+#    def SQL_QUERY_MUTATOR(
+#        sql,
+#        user_name=user_name,  # TODO(john-bodley): Deprecate in 3.0.
+#        security_manager=security_manager,
+#        database=database,
+#    ):
 #        dttm = datetime.now().isoformat()
-#        return f"-- [SQL LAB] {username} {dttm}\n{sql}"
+#        return f"-- [SQL LAB] {user_name} {dttm}\n{sql}"
+# For backward compatibility, you can unpack any of the above arguments in your
+# function definition, but keep the **kwargs as the last argument to allow new args
+# to be added later without any errors.
 def SQL_QUERY_MUTATOR(  # pylint: disable=invalid-name,unused-argument
-    sql: str,
-    user_name: Optional[str],
-    security_manager: LocalProxy,
-    database: "Database",
+    sql: str, **kwargs: Any
 ) -> str:
     return sql
 
 
-# Enable / disable scheduled email reports
-#
-# Warning: This config key is deprecated and will be removed in version 2.0.0"
-ENABLE_SCHEDULED_EMAIL_REPORTS = False
-
-# Enable / disable Alerts, where users can define custom SQL that
-# will send emails with screenshots of charts or dashboards periodically
-# if it meets the criteria
-#
-# Warning: This config key is deprecated and will be removed in version 2.0.0"
-ENABLE_ALERTS = False
+# This auth provider is used by background (offline) tasks that need to access
+# protected resources. Can be overridden by end users in order to support
+# custom auth mechanisms
+MACHINE_AUTH_PROVIDER_CLASS = "superset.utils.machine_auth.MachineAuthProvider"
 
 # ---------------------------------------------------
 # Alerts & Reports
@@ -1116,6 +1099,9 @@ ALERT_REPORTS_WORKING_SOFT_TIME_OUT_LAG = int(timedelta(seconds=1).total_seconds
 # If set to true no notification is sent, the worker will just log a message.
 # Useful for debugging
 ALERT_REPORTS_NOTIFICATION_DRY_RUN = False
+# Max tries to run queries to prevent false errors caused by transient errors
+# being returned to users. Set to a value >1 to enable retries.
+ALERT_REPORTS_QUERY_EXECUTION_MAX_TRIES = 1
 
 # A custom prefix to use on all Alerts & Reports emails
 EMAIL_REPORTS_SUBJECT_PREFIX = "[Report] "
@@ -1123,43 +1109,6 @@ EMAIL_REPORTS_SUBJECT_PREFIX = "[Report] "
 # Slack API token for the superset reports, either string or callable
 SLACK_API_TOKEN: Optional[Union[Callable[[], str], str]] = None
 SLACK_PROXY = None
-
-# If enabled, certain features are run in debug mode
-# Current list:
-# * Emails are sent using dry-run mode (logging only)
-#
-# Warning: This config key is deprecated and will be removed in version 2.0.0"
-SCHEDULED_EMAIL_DEBUG_MODE = False
-
-# This auth provider is used by background (offline) tasks that need to access
-# protected resources. Can be overridden by end users in order to support
-# custom auth mechanisms
-MACHINE_AUTH_PROVIDER_CLASS = "superset.utils.machine_auth.MachineAuthProvider"
-
-# Email reports - minimum time resolution (in minutes) for the crontab
-#
-# Warning: This config key is deprecated and will be removed in version 2.0.0"
-EMAIL_REPORTS_CRON_RESOLUTION = 15
-
-# The MAX duration (in seconds) a email schedule can run for before being killed
-# by celery.
-#
-# Warning: This config key is deprecated and will be removed in version 2.0.0"
-EMAIL_ASYNC_TIME_LIMIT_SEC = int(timedelta(minutes=5).total_seconds())
-
-# Send bcc of all reports to this address. Set to None to disable.
-# This is useful for maintaining an audit trail of all email deliveries.
-#
-# Warning: This config key is deprecated and will be removed in version 2.0.0"
-EMAIL_REPORT_BCC_ADDRESS = None
-
-# User credentials to use for generating reports
-# This user should have permissions to browse all the dashboards and
-# slices.
-# TODO: In the future, login as the owner of the item to generate reports
-#
-# Warning: This config key is deprecated and will be removed in version 2.0.0"
-EMAIL_REPORTS_USER = "admin"
 
 # The webdriver to use for generating reports. Use one of the following
 # firefox
@@ -1287,34 +1236,14 @@ PREVENT_UNSAFE_DB_CONNECTIONS = True
 # Example: SSL_CERT_PATH = "/certs"
 SSL_CERT_PATH: Optional[str] = None
 
-# SIP-15 should be enabled for all new Superset deployments which ensures that the time
-# range endpoints adhere to [start, end). For existing deployments admins should provide
-# a dedicated period of time to allow chart producers to update their charts before
-# mass migrating all charts to use the [start, end) interval.
-#
-# Note if no end date for the grace period is specified then the grace period is
-# indefinite.
-SIP_15_ENABLED = True
-SIP_15_GRACE_PERIOD_END: Optional[date] = None  # exclusive
-SIP_15_DEFAULT_TIME_RANGE_ENDPOINTS = ["unknown", "inclusive"]
-SIP_15_TOAST_MESSAGE = (
-    "Action Required: Preview then save your chart using the "
-    'new time range endpoints <a target="_blank" href="{url}" '
-    'class="alert-link">here</a>.'
-)
-
-# Turn this key to False to disable ownership check on the old dataset MVC and
-# datasource API /datasource/save.
-#
-# Warning: This config key is deprecated and will be removed in version 2.0.0"
-OLD_API_CHECK_DATASET_OWNERSHIP = True
-
 # SQLA table mutator, every time we fetch the metadata for a certain table
 # (superset.connectors.sqla.models.SqlaTable), we call this hook
 # to allow mutating the object with this callback.
 # This can be used to set any properties of the object based on naming
 # conventions and such. You can find examples in the tests.
+
 SQLA_TABLE_MUTATOR = lambda table: table
+
 
 # Global async query config options.
 # Requires GLOBAL_ASYNC_QUERIES feature flag to be enabled.
@@ -1381,12 +1310,15 @@ DATASET_HEALTH_CHECK: Optional[Callable[["SqlaTable"], str]] = None
 # Do not show user info or profile in the menu
 MENU_HIDE_USER_INFO = False
 
-# SQLalchemy link doc reference
-SQLALCHEMY_DOCS_URL = "https://docs.sqlalchemy.org/en/13/core/engines.html"
-SQLALCHEMY_DISPLAY_TEXT = "SQLAlchemy docs"
-
 # Set to False to only allow viewing own recent activity
 ENABLE_BROAD_ACTIVITY_ACCESS = True
+
+# the advanced data type key should correspond to that set in the column metadata
+ADVANCED_DATA_TYPES: Dict[str, AdvancedDataType] = {
+    "internet_address": internet_address,
+    "port": internet_port,
+}
+
 
 # -------------------------------------------------------------------
 # *                WARNING:  STOP EDITING  HERE                    *
