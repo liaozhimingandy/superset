@@ -1,4 +1,4 @@
-FROM apache/superset:1.5.1
+FROM apache/superset:2.0.0
 # Switching to root to install the required packages
 USER root
 # Example: installing the MySQL driver to connect to the metadata database
@@ -15,4 +15,4 @@ RUN pip install -i https://pypi.tuna.tsinghua.edu.cn/simple cx_Oracle==8.3.0 pym
 USER superset
 
 # 构建
-# docker build --squash -t liaozhiming/superset:1.5.1.202208 . 
+# docker build --squash -t liaozhiming/superset:2.0.0.202208 . 
