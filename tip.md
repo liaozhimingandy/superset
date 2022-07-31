@@ -1,0 +1,9 @@
+###### superset 联动配置(config.py)
+
+```
+"ESCAPE_MARKDOWN_HTML": False
+"DASHBOARD_NATIVE_FILTERS": True,
+"DASHBOARD_CROSS_FILTERS":  True,
+"DASHBOARD_NATIVE_FILTERS_SET":  True,
+```
+
