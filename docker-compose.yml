@@ -13,7 +13,7 @@ x-mysql-volumes: &mysql-volumes
 x-kylin-image: &kylin-image apachekylin/apache-kylin-standalone:4.0.0
 
 # superset
-x-superset-image: &superset-image liaozhiming/superset:2.0.0.202208
+x-superset-image: &superset-image liaozhiming/superset:2.0.0.202210
 
 version: '3'
 services:
