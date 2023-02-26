@@ -103,3 +103,49 @@ keys *
 get key
 ```
 
+###### 权限设置
+
+```
+# Uncomment to setup Public role name, no authentication needed
+AUTH_ROLE_PUBLIC = 'Public'
+
+PUBLIC_ROLE_LIKE: Optional[str] = "Gamma"
+
+# 以上config.py配置后执行init
+# 再加上
+all datasource access on all_datasource_access
+
+# 删除多余的权限,测试无问题后可继续完善
+delete a
+from `ab_permission_view_role` a
+inner join ab_permission_view b on a.permission_view_id = b.id
+inner join ab_permission c on c.id = b.permission_id
+where a.role_id = 2 
+	and (c.name like '%json%'
+	or c.name like '%menu%'
+	or c.name like '%write%'
+	or c.name like '%delete%'
+	or c.name like '%can_copy_dash%'
+	or c.name like '%create%'
+	or c.name like '%edit%'
+	or c.name like '%import%'
+	or c.name like '%can_save_dash%'
+	or c.name like '%can_share_chart%'
+	or c.name like '%list%'
+	or c.name like '%get%'
+	or c.name like '%form%')
+	
+-- 细项删除
+delete 
+from ab_permission_view_role
+where id = 927
+
+select c.name, d.`name`, a.id
+from `ab_permission_view_role` a
+inner join ab_permission_view b on a.permission_view_id = b.id
+inner join ab_permission c on c.id = b.permission_id
+inner join ab_view_menu d on d.id = b.view_menu_id
+where a.role_id = 2 
+	and c.name like '%can_read%'
+```
+
