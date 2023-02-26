@@ -13,6 +13,10 @@
 ```
 # Setup default language
 BABEL_DEFAULT_LOCALE = "zh"
+
+# incomplete and not well maintained.
+# 注释以下,默认只有中文
+# LANGUAGES = {}
 ```
 
 ###### 密钥修改
@@ -103,7 +107,7 @@ keys *
 get key
 ```
 
-###### 权限设置
+###### 权限设置-匿名用户访问
 
 ```
 # Uncomment to setup Public role name, no authentication needed
@@ -147,5 +151,15 @@ inner join ab_permission c on c.id = b.permission_id
 inner join ab_view_menu d on d.id = b.view_menu_id
 where a.role_id = 2 
 	and c.name like '%can_read%'
+```
+
+###### 权限设置-按职能
+
+```
+规则: Gamma + 自定义角色
+自定义角色需添加以下权限:
+database access on [连接名称]
+schema access on [连接名称].[数据库名称]
+datasource access on [数据库名称].[表名]
 ```
 
