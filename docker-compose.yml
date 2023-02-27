@@ -95,7 +95,7 @@ services:
     networks:
       - bi
     volumes:
-      - ./superset/config.py:/app/superset/config.py
+      - ./config.py:/app/superset/config.py
 
 networks:
   bi:
